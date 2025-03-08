@@ -73,11 +73,6 @@ const Login = () => {
                     {/* Simulated Google login button (No Firebase) */}
                     <button className="google-login">Log In With Google</button>
                 </div>
-
-                {/* Link to sign up page */}
-                <div className="signup-link">
-                    <p>Don't have an account? <a href="/signup">Sign Up</a></p>
-                </div>
             </div>
         </div>
     );
