@@ -10,6 +10,7 @@ import {
   UsePaginationInstanceProps,
   UseSortByState,
   UsePaginationState,
+  HeaderGroup,
 } from "react-table";
 
 interface Document {
@@ -25,6 +26,13 @@ type TableInstanceWithHooks<T extends object> = TableInstance<T> &
   UsePaginationInstanceProps<T> & {
     state: UseSortByState<T> & UsePaginationState<T>;
   };
+
+// Extend the HeaderGroup type to include sorting props
+type HeaderGroupWithSort<T extends object> = HeaderGroup<T> & {
+  getSortByToggleProps: () => any;
+  isSorted: boolean;
+  isSortedDesc: boolean;
+};
 
 const DocumentTable: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -84,7 +92,6 @@ const DocumentTable: React.FC = () => {
     {
       columns,
       data: filteredDocs,
-      // Properly define initialState for pagination
       initialState: { pageIndex: 0, pageSize: 10 } as any, // Use `as any` to bypass TypeScript error
     },
     useSortBy,
@@ -101,24 +108,30 @@ const DocumentTable: React.FC = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <table {...getTableProps()} border="1" style={{ width: "100%" }}>
+      <table {...getTableProps()} border={1} style={{ width: "100%" }}>
         <thead>
           {headerGroups.map((headerGroup) => (
             <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
-              {headerGroup.headers.map((column) => (
-                <th
-                  {...column.getHeaderProps(
-                    column.getSortByToggleProps
-                      ? column.getSortByToggleProps()
-                      : undefined
-                  )}
-                  key={column.id}
-                >
-                  {column.render("Header")}
-                  {/* Add sort direction indicator */}
-                  {column.isSorted ? (column.isSortedDesc ? " 🔽" : " 🔼") : ""}
-                </th>
-              ))}
+              {headerGroup.headers.map((column) => {
+                // Cast the column to HeaderGroupWithSort to access sorting props
+                const sortColumn = column as HeaderGroupWithSort<Document>;
+                return (
+                  <th
+                    {...sortColumn.getHeaderProps(
+                      sortColumn.getSortByToggleProps()
+                    )}
+                    key={sortColumn.id}
+                  >
+                    {sortColumn.render("Header")}
+                    {/* Add sort direction indicator */}
+                    {sortColumn.isSorted
+                      ? sortColumn.isSortedDesc
+                        ? " 🔽"
+                        : " 🔼"
+                      : ""}
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
