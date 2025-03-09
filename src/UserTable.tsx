@@ -12,7 +12,8 @@ import {
   UsePaginationState,
   HeaderGroup,
 } from "react-table";
-import UserForm from "./UserForm"; // Import the UserForm component
+import UserForm from "./UserForm"; // Import the existing UserForm
+import "./UserTable.css"; // Import the CSS file
 
 interface User {
   id: number;
@@ -38,19 +39,36 @@ type HeaderGroupWithSort<T extends object> = HeaderGroup<T> & {
 const UserTable: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false); // State to control form visibility
-  const [selectedUser, setSelectedUser] = useState<User | null>(null); // State to store the user being edited
+  const [showAddUserForm, setShowAddUserForm] = useState(false); // State to control Add User form visibility
 
+  // Fetch users from the API
   useEffect(() => {
-    axios
-      .get("https://jsonplaceholder.typicode.com/users")
-      .then((res) => {
-        setUsers(res.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-      });
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get("http://localhost:3001/users");
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  // Handle adding a new user
+  const handleAddUser = async (newUser: Omit<User, "id">) => {
+    try {
+      // Send a POST request to add the new user
+      const response = await axios.post("http://localhost:3001/users", {
+        ...newUser,
+        id: users.length + 1, // Generate a new ID (mock API will handle this automatically)
+      });
+      setUsers([...users, response.data]); // Update the local state
+      setShowAddUserForm(false); // Hide the Add User form
+    } catch (error) {
+      console.error("Error adding user:", error);
+    }
+  };
 
   // Filter users based on search input
   const filteredUsers = useMemo(
@@ -71,7 +89,9 @@ const UserTable: React.FC = () => {
       {
         Header: "Actions",
         Cell: ({ row }: { row: any }) => (
-          <button onClick={() => handleEdit(row.original)}>Edit</button>
+          <button className="edit-button" onClick={() => handleEdit(row.original)}>
+            Edit
+          </button>
         ),
       },
     ],
@@ -83,8 +103,8 @@ const UserTable: React.FC = () => {
     getTableProps,
     getTableBodyProps,
     headerGroups,
-    page,
     prepareRow,
+    page,
     nextPage,
     previousPage,
     canNextPage,
@@ -100,49 +120,35 @@ const UserTable: React.FC = () => {
     usePagination
   ) as TableInstanceWithHooks<User>; // Cast to the extended type
 
-  // Handle form submission
-  const handleFormSubmit = (data: any) => {
-    if (selectedUser) {
-      // Update existing user
-      const updatedUsers = users.map((user) =>
-        user.id === selectedUser.id ? { ...user, ...data } : user
-      );
-      setUsers(updatedUsers);
-    } else {
-      // Add new user
-      const newUser = { ...data, id: users.length + 1 };
-      setUsers([...users, newUser]);
-    }
-    setShowForm(false); // Hide the form after submission
-    setSelectedUser(null); // Reset selected user
-  };
-
   // Handle edit button click
   const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setShowForm(true);
+    // Implement edit functionality here
+    console.log("Edit user:", user);
   };
 
   return (
-    <div>
+    <div className="user-table-container">
       <h2>User Management</h2>
-      <button onClick={() => setShowForm(true)}>Add User</button>
+      <button className="add-user-button" onClick={() => setShowAddUserForm(true)}>
+        Add User
+      </button>
       <input
         type="text"
         placeholder="Search by name..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        className="search-input"
       />
 
-      {/* Display the form when showForm is true */}
-      {showForm && (
+      {/* Add User Form */}
+      {showAddUserForm && (
         <UserForm
-          onSubmit={handleFormSubmit}
-          defaultValues={selectedUser || undefined}
+          onSubmit={handleAddUser}
+          onClose={() => setShowAddUserForm(false)}
         />
       )}
 
-      <table {...getTableProps()} border={1} style={{ width: "100%" }}>
+      <table {...getTableProps()} className="user-table">
         <thead>
           {headerGroups.map((headerGroup) => (
             <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
@@ -185,16 +191,18 @@ const UserTable: React.FC = () => {
         </tbody>
       </table>
 
-      <div style={{ marginTop: "10px" }}>
+      <div className="pagination-container">
         <button
+          className="pagination-button"
           onClick={() => previousPage()}
           disabled={!canPreviousPage}
           aria-label="Previous Page"
         >
           Previous
         </button>
-        <span style={{ margin: "0 10px" }}>Page {pageIndex + 1}</span>
+        <span className="page-number">Page {pageIndex + 1}</span>
         <button
+          className="pagination-button"
           onClick={() => nextPage()}
           disabled={!canNextPage}
           aria-label="Next Page"
