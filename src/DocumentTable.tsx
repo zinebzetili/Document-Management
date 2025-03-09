@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import {
   useTable,
@@ -12,12 +12,16 @@ import {
   UsePaginationState,
   HeaderGroup,
 } from "react-table";
+import DocumentForm from "./DocumentForm"; // Import the DocumentForm component
+import "./DocumentTable.css"; // Import the CSS file
 
 interface Document {
   id: number;
   title: string;
   author: string;
   created_at: string;
+  last_edited?: string; // Add last edited date
+  file?: File | string; // Add file field
 }
 
 // Extend the TableInstance type to include pagination and sorting
@@ -37,6 +41,8 @@ type HeaderGroupWithSort<T extends object> = HeaderGroup<T> & {
 const DocumentTable: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false); // State to control form visibility
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null); // State to store the document being edited
 
   useEffect(() => {
     axios
@@ -48,6 +54,7 @@ const DocumentTable: React.FC = () => {
             title: doc.title,
             author: "Unknown",
             created_at: new Date().toLocaleDateString(),
+            last_edited: new Date().toLocaleDateString(), // Initialize last edited date
           }))
         );
       })
@@ -63,6 +70,15 @@ const DocumentTable: React.FC = () => {
       { Header: "Title", accessor: "title" },
       { Header: "Author", accessor: "author" },
       { Header: "Created At", accessor: "created_at" },
+      { Header: "Last Edited", accessor: "last_edited" },
+      {
+        Header: "Actions",
+        Cell: ({ row }: { row: any }) => (
+          <button className="edit-button" onClick={() => handleEdit(row.original)}>
+            Edit
+          </button>
+        ),
+      },
     ],
     []
   );
@@ -98,17 +114,62 @@ const DocumentTable: React.FC = () => {
     usePagination
   ) as TableInstanceWithHooks<Document>; // Cast to the extended type
 
+  // Handle form submission
+  const handleFormSubmit = (data: any) => {
+    const updatedDocument = {
+      ...data,
+      last_edited: new Date().toLocaleDateString(), // Update last edited date
+    };
+
+    if (selectedDocument) {
+      // Update existing document
+      const updatedDocuments = documents.map((doc) =>
+        doc.id === selectedDocument.id ? updatedDocument : doc
+      );
+      setDocuments(updatedDocuments);
+    } else {
+      // Add new document
+      const newDocument = {
+        ...updatedDocument,
+        id: documents.length + 1,
+        created_at: new Date().toLocaleDateString(), // Set creation date
+      };
+      setDocuments([...documents, newDocument]);
+    }
+    setShowForm(false); // Hide the form after submission
+    setSelectedDocument(null); // Reset selected document
+  };
+
+  // Handle edit button click
+  const handleEdit = (document: Document) => {
+    setSelectedDocument(document);
+    setShowForm(true);
+  };
+
   return (
-    <div>
+    <div className="document-table-container">
       <h2>Document Management</h2>
+      <button className="add-document-button" onClick={() => setShowForm(true)}>
+        Add Document
+      </button>
       <input
         type="text"
         placeholder="Search by title..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        className="search-input"
       />
 
-      <table {...getTableProps()} border={1} style={{ width: "100%" }}>
+      {/* Display the form as a pop-up when showForm is true */}
+      {showForm && (
+        <DocumentForm
+          onSubmit={handleFormSubmit}
+          defaultValues={selectedDocument || undefined}
+          onClose={() => setShowForm(false)} // Close the modal
+        />
+      )}
+
+      <table {...getTableProps()} className="document-table">
         <thead>
           {headerGroups.map((headerGroup) => (
             <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
@@ -151,16 +212,18 @@ const DocumentTable: React.FC = () => {
         </tbody>
       </table>
 
-      <div style={{ marginTop: "10px" }}>
+      <div className="pagination-container">
         <button
+          className="pagination-button"
           onClick={() => previousPage()}
           disabled={!canPreviousPage}
           aria-label="Previous Page"
         >
           Previous
         </button>
-        <span style={{ margin: "0 10px" }}>Page {pageIndex + 1}</span>
+        <span className="page-number">Page {pageIndex + 1}</span>
         <button
+          className="pagination-button"
           onClick={() => nextPage()}
           disabled={!canNextPage}
           aria-label="Next Page"
